@@ -11,11 +11,14 @@ $host = $options['h'];
 $port = $options['p'];
 
 if (isset($options['s'])) { $secretfile = $options['s']; }
-if (isset($options['d'])) { $debug = 1; }
+if (isset($options['d'])) {
+  $debug = 1;
+} else {
+  $debug = 0;
+}
 if (isset($options['v'])) { 
   $varnishadm = $options['v'];
-} 
-else {
+} else {
   $varnishadm = '/usr/local/bin/varnishadm';
 }
 
@@ -27,12 +30,24 @@ if ($debug) {
   print "\n";
 }
 
-exec("$varnishadm -T $host:$port stats 2>&1", $output);
+if (isset($secretfile)) {
+  $command = "$varnishadm -T $host:$port -S $secretfile stats 2>&1";
+} else {
+  $command = "$varnishadm -T $host:$port stats 2>&1";
+}
+
+if ($debug) {
+  print "Command to execute:\n";
+  print "  $command\n";
+}
+
+exec($command, $output);
 if (preg_match("/No such file or directory/", join($output), $matches)) {
   print "Sorry, but $varnishadm does not exist, are you sure that varnish is installed and that's the right path?\n";
   exit(2);
 }
 
+$metrics = array();
 foreach($output as $line) {
   if (preg_match("/(\d+)  (.*)$/", $line, $matches)) {
     $value = $matches[1];
@@ -66,9 +81,14 @@ if ($debug) {
   print "\n";
 }
 
-$metrics['total_caches'] = $metrics['cache_hits'] + $metrics['cache_misses'];
-$metrics['cache_hit_rate'] = round($metrics['cache_hits']/$metrics['total_caches']*100, 2);
-$metrics['cache_miss_rate'] = round($metrics['cache_misses']/$metrics['total_caches']*100, 2);
+if (isset($metrics['cache_hits']) && isset($metrics['cache_misses'])) {
+  $metrics['total_caches'] = $metrics['cache_hits'] + $metrics['cache_misses'];
+  $metrics['cache_hit_rate'] = round($metrics['cache_hits']/$metrics['total_caches']*100, 2);
+  $metrics['cache_miss_rate'] = round($metrics['cache_misses']/$metrics['total_caches']*100, 2);
+} else {
+  print "VARNISH CRITICAL! Cannot parse metrics. | \n";
+  exit(2);
+}
 
 if ($metrics['backends'] < 1) {
   $exitstring = "VARNISH CRITICAL! No backends running. | ";
