@@ -89,7 +89,7 @@ print "$exitstring\n";
 exit($exitcode);
 
 function usage() {
-  print "usage: check_varnish -h <host> -p <port> [ -s <secretfile> ]\n";
+  print "usage: check_varnish -h <host> -p <port> [ -s <secretfile> ] [ -v </path/to/varnishadm> ] [-h]\n";
   print "\n";
   exit(2);
 }
