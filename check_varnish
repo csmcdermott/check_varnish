@@ -82,7 +82,7 @@ if ($metrics['backends'] < 1) {
 }
 
 foreach ($metrics as $var => $val) {
-  $exitstring .= "$var=$val;";
+  $exitstring .= "$var=$val,";
 }
 
 print "$exitstring\n";
