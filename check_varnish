@@ -1,6 +1,25 @@
 #!/usr/bin/php -q
 <?php
 
+/**
+ *  @File
+ *  This script monitors the health of a varnish server.
+ *
+ *  We offer no warantee or guarantee - use this code at your own risk!
+ *  All code is Copyright (C) 2011, Applied Trust Engineering, Inc.
+ *
+ */
+
+/**
+ *  This script requires a host and a port number, and you can optionally
+ *  also provide the location of a secrets file and the path to the 
+ *  varnishadm binary on your system.
+ *
+ *  Written by Chris McDermott, AppliedTrust, chris@appliedtrust.com
+ *    v1.0 12/28/2011
+ *
+ */
+
 putenv('TZ=America/Denver');
 
 $options = getopt('h:p:s:v:d');
