@@ -1,7 +1,7 @@
 Written by Chris McDermott, AppliedTrust
   chris@appliedtrust.com
-  v1.0 12/12/2011
+  v1.2 10/28/2012
 
 
 This script is intended to be a Nagios plugin to monitor the health of a varnishd process.
-It uses the varnishadm command to check the varnish stats, and then reports the results.
+It uses the varnishstat command to check the varnish stats, and then reports the results.
