@@ -3,23 +3,17 @@
 
 putenv('TZ=America/Denver');
 
-$options = getopt('h:p:s:v:d');
-if (!isset($options['h'])) { usage(); }
-if (!isset($options['p'])) { usage(); }
+$options = getopt('pd');
 
-$host = $options['h'];
-$port = $options['p'];
-
-if (isset($options['s'])) { $secretfile = $options['s']; }
 if (isset($options['d'])) {
   $debug = 1;
 } else {
   $debug = 0;
 }
-if (isset($options['v'])) { 
-  $varnishadm = $options['v'];
+if (isset($options['p'])) { 
+  $varnishstat = $options['p'];
 } else {
-  $varnishadm = '/usr/local/bin/varnishadm';
+  $varnishstat = '/usr/bin/varnishstat';
 }
 
 if ($debug) {
@@ -30,11 +24,7 @@ if ($debug) {
   print "\n";
 }
 
-if (isset($secretfile)) {
-  $command = "$varnishadm -T $host:$port -S $secretfile stats 2>&1";
-} else {
-  $command = "$varnishadm -T $host:$port stats 2>&1";
-}
+$command = "$varnishstat -1 2>&1";
 
 if ($debug) {
   print "Command to execute:\n";
@@ -43,32 +33,33 @@ if ($debug) {
 
 exec($command, $output);
 if (preg_match("/No such file or directory/", join($output), $matches)) {
-  print "Sorry, but $varnishadm does not exist, are you sure that varnish is installed and that's the right path?\n";
+  print "Sorry, but $varnishstat does not exist, are you sure that varnish is installed and that's the right path?\n";
   exit(2);
 }
 
 $metrics = array();
 foreach($output as $line) {
-  if (preg_match("/(\d+)  (.*)$/", $line, $matches)) {
-    $value = $matches[1];
-    $key = $matches[2];
-    switch ($key) {
-      case 'Client connections accepted':
-        $metrics['client_connections'] = $value;
-      case 'Client requests received':
-        $metrics['client_requests'] = $value;
-      case 'Cache hits':
-        $metrics['cache_hits'] = $value;
-      case 'Cache misses':
-        $metrics['cache_misses'] = $value;
-      case 'N backends':
-        $metrics['backends'] = $value;
-      case 'Total Sessions':
-        $metrics['total_sessions'] = $value;
-      case 'Total Requests':
-        $metrics['total_requests'] = $value;
-      case 'N worker threads':
-        $metrics['worker_threads'] = $value;
+  if (preg_match("/^(\S+?)\s+?(\d+?)\s+?/", $line, $matches)) {
+    $key = $matches[1];
+    $value = $matches[2];
+    if ($key === 'client_conn') {
+        $metrics['client_conn'] = $value;
+    } else if ($key === 'client_req') {
+        $metrics['client_req'] = $value;
+    } else if ($key === 'cache_hit') {
+        $metrics['cache_hit'] = $value;
+    } else if ($key === 'cache_miss') {
+        $metrics['cache_miss'] = $value;
+    } else if ($key === 'n_backend') {
+        $metrics['n_backend'] = $value;
+    } else if ($key === 's_sess') {
+        $metrics['s_sess'] = $value;
+    } else if ($key === 's_req') {
+        $metrics['s_req'] = $value;
+    } else if ($key === 'n_wrk') {
+        $metrics['n_wrk'] = $value;
+    } else {
+        continue;
     }
   }
 }
@@ -81,16 +72,16 @@ if ($debug) {
   print "\n";
 }
 
-if (isset($metrics['cache_hits']) && isset($metrics['cache_misses'])) {
-  $metrics['total_caches'] = $metrics['cache_hits'] + $metrics['cache_misses'];
-  $metrics['cache_hit_rate'] = round($metrics['cache_hits']/$metrics['total_caches']*100, 2);
-  $metrics['cache_miss_rate'] = round($metrics['cache_misses']/$metrics['total_caches']*100, 2);
+if (isset($metrics['cache_hit']) && isset($metrics['cache_miss'])) {
+  $metrics['total_caches'] = $metrics['cache_hit'] + $metrics['cache_miss'];
+  $metrics['cache_hit_rate'] = round($metrics['cache_hit']/$metrics['total_caches']*100, 2);
+  $metrics['cache_miss_rate'] = round($metrics['cache_miss']/$metrics['total_caches']*100, 2);
 } else {
   print "VARNISH CRITICAL! Cannot parse metrics. | \n";
   exit(2);
 }
 
-if ($metrics['backends'] < 1) {
+if ($metrics['n_backend'] < 1) {
   $exitstring = "VARNISH CRITICAL! No backends running. | ";
   $exitcode = 2;
 } elseif ($metrics['cache_miss_rate'] > $metrics['cache_hit_rate']) {
@@ -109,7 +100,7 @@ print "$exitstring\n";
 exit($exitcode);
 
 function usage() {
-  print "usage: check_varnish -h <host> -p <port> [ -s <secretfile> ] [ -v </path/to/varnishadm> ] [-h]\n";
+  print "usage: check_varnish -h <host> -p <port> [ -s <secretfile> ] [ -v </path/to/varnishstat> ] [-h]\n";
   print "\n";
   exit(2);
 }
